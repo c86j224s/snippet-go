@@ -39,7 +39,7 @@ const (
 
 func parseStatusLine(s string) (string, string, string, string, error) {
 	i := strings.Index(s, "\r\n")
-	if i == -1 {
+	if i <= 0 {
 		return s, "", "", "", errors.New("line separator not found")
 	}
 
@@ -48,6 +48,19 @@ func parseStatusLine(s string) (string, string, string, string, error) {
 	splitted := strings.Split(s, " ")
 
 	return s2, splitted[0], splitted[1], strings.Join(splitted[2:], " "), nil
+}
+
+func parseHeader(s string) (string, string, string, error) {
+	i := strings.Index(s, "\r\n")
+	if i <= 0 {
+		return s, "", "", errors.New("line separator not found")
+	}
+
+	s, s2 := s[:i], s[i+2:]
+
+	splitted := strings.Split(s, ":")
+
+	return s2, strings.TrimSpace(splitted[0]), strings.TrimSpace(strings.Join(splitted[1:], " ")), nil
 }
 
 func sendGetIndex(c net.Conn) {
@@ -109,6 +122,19 @@ func main() {
 	fmt.Println("version: " + version)
 	fmt.Println("statuscode: " + statuscode)
 	fmt.Println("text: " + text)
+	for {
+		response2, headerName, headerValue, err := parseHeader(response)
+		if err != nil {
+			fmt.Println(err)
+			break
+		}
+
+		fmt.Println("headerName: " + headerName)
+		fmt.Println("headerValue: " + headerValue)
+
+		response = response2
+	}
+
 	fmt.Println(response)
 
 	fmt.Scanln()

@@ -1,12 +1,40 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"time"
 
 	redis "github.com/go-redis/redis"
 )
+
+func createUser(username string, password string) (int64, error) {
+	db, err := sql.Open("mysql", "./hello.db")
+	if err != nil {
+		return 0, err
+	}
+
+	stmt, err := db.Prepare("insert into users (username, passwordhash) values (?, ?, date('now'));")
+	if err != nil {
+		return 0, err
+	}
+
+	res, err := stmt.Exec(username, password)
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	fmt.Println("new id ")
+	fmt.Println(id)
+
+	return id, nil
+}
 
 func handleHello(resp http.ResponseWriter, req *http.Request) {
 	resp.Write([]byte("hello"))
@@ -68,6 +96,12 @@ func handleDeleteMemo(resp http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
+	_, err := createUser("hello", "1234")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("fdasfds")
+
 	http.HandleFunc("/hello", handleHello)
 	http.HandleFunc("/memo", handleMemo)
 
