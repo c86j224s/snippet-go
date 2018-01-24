@@ -9,6 +9,54 @@ import (
 )
 
 /*
+
+HTTP/1.1 Augmented BNF
+https://tools.ietf.org/html/rfc2616
+
+// non-terminals
+
+HTTP-message = Request | Response
+
+generic-message = start-line *( message-header CRLF ) CRLF [ message-body ]
+start-line = Request-Line | Status-Line
+
+Response = Status-Line *(( general-header | response-header | entity-header ) CRLF ) CRLF [ message-body ]
+
+Status-Line = HTTP-Version SP Status-Code SP Reason-Phrase CRLF
+HTTP-Version = "HTTP" "/" 1*DIGIT "." 1*DIGIT
+Status-Code = "100" | "101" | ... | "504" | "505" | extension-code
+extention-code = 3DIGIT
+Reason-Phrase = *<TEXT, excluding CR, LF>
+
+ALPHA = UPALPHA | LOALPHA
+CRLF = CR LF
+LWS = [CRLF] 1*( SP | HT )
+TEXT = <any OCTET excepts CTLs, but including LWS>
+token = 1*<any CHAR except CTLs or separators>
+separators = "(" | ")" | "<" | ">" | "@" | "," | ";" | ":" | "\" | "/" | "[" | "]" | "?" | "=" | "{" | "}" | SP | HT | <">
+comment = "(" *( ctext | quoted-pair | comment ) ")"
+ctext = <any TEXT excluding "(" and ")">
+quoted-string = ( <"> *(qdtext | quoted-pair ) <"> )
+qdtext = <any TEXT except <">>
+quoted-pair = "\" CHAR
+
+// terminals
+
+OCTET = <any 8-bit sequence of data>
+CHAR = <any US-ASCII character (octets 0 - 127)>
+UPALPHA = <any US-ASCII uppercase letter "A".."Z">
+LOALPHA  = <any US-ASCII lowercase letter "A".."Z">
+DIGIT = <any US-ASCII digit "0".."9">
+CTL = <any US-ASCII control character (octets 0 - 31) and DEL (127)>
+CR = <US-ASCII CR, carriage return (13)>
+LF = <US-ASCII LF, linefeed (10)>
+SP = <US-ASCII SP, space (32)>
+HT = <US-ASCII HT, horizontal-tab (9)>
+<"> = <US-ASCII double quote mark (34)>
+
+*/
+
+/*
 type method int
 
 const (
