@@ -95,6 +95,7 @@ func main() {
 		fmt.Printf("error :%v", err)
 		return
 	}
+	fmt.Printf("Policy.Description: %#v", v.Description)
 }
 
 /*
