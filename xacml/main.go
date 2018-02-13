@@ -35,13 +35,24 @@ type Policy struct {
 	Rule               []Rule   `xml:"Rule"`
 }
 
-/*
-type PolicySet struct {
-	Name xml.Name
-	Policy []Policy
-	Rule   []Rule
+type PolicyIDReference struct {
 }
-*/
+
+type VariableDefinition struct {
+}
+
+type PolicySet struct {
+	Xmlns                string              `xml:"xmlns,attr"`
+	XmlnsXsi             string              `xml:"xmlns:xsi,attr"`
+	PolicySetID          string              `xml:"PolicySetId,attr"`
+	Version              string              `xml:"Version,attr"`
+	PolicyCombiningAlgID string              `xml:"PolicyCombiningAlgId"`
+	Description          string              `xml:"Description"`
+	Target               []Target            `xml:"Target"`
+	PolicyIDReference    []PolicyIDReference `xml:"PolicyIdReference"`
+	PolicySet            []PolicySet         `xml:"PolicySet"`
+	Policy               []Policy            `xml:"Policy"`
+}
 
 func main() {
 	data := `
@@ -95,7 +106,8 @@ func main() {
 		fmt.Printf("error :%v", err)
 		return
 	}
-	fmt.Printf("Policy.Description: %#v", v.Description)
+	fmt.Println("Policy.Description: " + v.Description)
+	fmt.Println("Policy.Rule.Id: " + v.Rule[0].RuleID)
 }
 
 /*
