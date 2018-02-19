@@ -1,6 +1,10 @@
 package alfa
 
-import "regexp"
+import (
+	"bytes"
+	"fmt"
+	"regexp"
+)
 
 // TokenType 에 대한 enumeration 입니다.
 const (
@@ -38,17 +42,23 @@ type Token struct {
 type Lexer struct {
 	source []byte
 	cursor uint
-	tokens []Token
+	Tokens []Token
 }
 
-// NewLexer : 파일을 읽어들여, 이를 해석할 렉서를 만듭니다.
-func NewLexer(fileName string) *Lexer {
+// NewLexerFromFile : 파일을 읽어들여, 이를 해석할 렉서를 만듭니다.
+func NewLexerFromFile(fileName string) *Lexer {
 	source, err := FileReadAll(fileName)
 	if err != nil {
 		return nil
 	}
 
 	lexer := Lexer{source, 0, make([]Token, 256)}
+	return &lexer
+}
+
+// NewLexerFromData : 데이터를 해석할 렉서를 만듭니다.
+func NewLexerFromData(source []byte) *Lexer {
+	lexer := Lexer{source, 0, make([]Token, 0, 256)}
 	return &lexer
 }
 
@@ -60,6 +70,8 @@ func (lexer *Lexer) Take(tokenType TokenType, fn func([]byte, uint) uint) *Token
 	}
 
 	newToken := &Token{tokenType, lexer.source[lexer.cursor:cur]}
+
+	lexer.Tokens = append(lexer.Tokens, *newToken)
 	lexer.cursor = cur
 	return newToken
 }
@@ -67,13 +79,8 @@ func (lexer *Lexer) Take(tokenType TokenType, fn func([]byte, uint) uint) *Token
 // IsWhitespace : 화이트스페이스인지 체크해서 화이트스페이스의 슬라이스를 구합니다.
 func IsWhitespace(source []byte, cursor uint) uint {
 	cur := cursor
-	for true {
-		switch source[cur] {
-		case ' ', '\t', '\r', '\n':
-			cur++
-		default:
-			break
-		}
+	for cur < uint(len(source)) && (source[cur] == ' ' || source[cur] == '\t' || source[cur] == '\r' || source[cur] == '\n') {
+		cur++
 	}
 
 	return cur
@@ -84,6 +91,7 @@ func IsComment(source []byte, cursor uint) uint {
 	cur := cursor
 	if source[cur] == '/' && source[cur+1] == '/' {
 		cur++
+
 		for true {
 			if source[cur] == '\n' {
 				cur++
@@ -98,7 +106,7 @@ func IsComment(source []byte, cursor uint) uint {
 	if source[cur] == '/' && source[cur+1] == '*' {
 		cur++
 		for true {
-			if source[cur] == '*' && source[cur+1] == '/' {
+			if source[cur-1] == '*' && source[cur] == '/' {
 				cur++
 				break
 			}
@@ -146,31 +154,122 @@ func IsIdentifier(source []byte, cursor uint) uint {
 	if re, err := regexp.Compile(`[a-zA-Z_][0-9a-zA-Z_]*`); err == nil {
 		matched := re.FindIndex(source[cur:])
 
-		if matched[0] == 0 {
-			cur += uint(matched[1])
+		if matched != nil {
+			if matched[0] == 0 {
+				cur += uint(matched[1])
+			}
 		}
 	}
 
 	return cur
 }
 
-// NextToken : 토큰을 하나 떼어냅니다.
-func (lexer *Lexer) NextToken() {
-	var nextToken *Token
-
-	tokenizer := map[TokenType]func([]byte, uint) uint{
-		WHITESPACE:     IsWhitespace,
-		COMMENT:        IsComment,
-		IDENTIFIER:     IsIdentifier,
-		STRINGLITERAL:  IsStringLiteral,
-		NUMERICLITERAL: IsNumericLiteral,
+// IsOperator 는 연산자인지를 확인합니다.
+func IsOperator(source []byte, cursor uint) uint {
+	operators := [][]byte{
+		[]byte("|"),
+		[]byte("&"),
+		[]byte("<"),
+		[]byte(">"),
+		[]byte("$"),
+		[]byte("="),
+		[]byte("@"),
+		[]byte("^"),
+		[]byte("+"),
+		[]byte("-"),
+		[]byte("*"),
+		[]byte("/"),
+		[]byte("%"),
 	}
-	for tok, fn := range tokenizer {
-		if nextToken = lexer.Take(tok, fn); nextToken != nil {
-			return
+
+	for _, op := range operators {
+		if bytes.HasPrefix(source, op) {
+			return cursor + uint(len(op))
 		}
 	}
 
-	lexer.tokens = append(lexer.tokens, Token{ERROR, lexer.source[lexer.cursor : lexer.cursor+1]})
+	return cursor
+}
+
+// IsCurlyBracedBegin 은 블록괄호의 시작을 확인합니다.
+func IsCurlyBracedBegin(source []byte, cursor uint) uint {
+	if source[cursor] == '{' {
+		return cursor + 1
+	}
+
+	return cursor
+}
+
+// IsCurlyBracedEnd 는 블록괄호의 끝을 확인합니다.
+func IsCurlyBracedEnd(source []byte, cursor uint) uint {
+	if source[cursor] == '}' {
+		return cursor + 1
+	}
+	return cursor
+}
+
+// IsRoundBracedBegin 은 괄호의 시작을 확인합니다.
+func IsRoundBracedBegin(source []byte, cursor uint) uint {
+	if source[cursor] == '(' {
+		return cursor + 1
+	}
+	return cursor
+}
+
+// IsRoundBracedEnd 는 괄호의 끝을 확인합니다.
+func IsRoundBracedEnd(source []byte, cursor uint) uint {
+	if source[cursor] == ')' {
+		return cursor + 1
+	}
+	return cursor
+}
+
+// IsEOF 는 데이터의 끝인지를 확인합니다.
+func IsEOF(source []byte, cursor uint) bool {
+	if cursor >= uint(len(source)) {
+		return true
+	}
+	return false
+}
+
+// NextToken : 토큰을 하나 떼어냅니다.
+func (lexer *Lexer) NextToken() bool {
+	var nextToken *Token
+
+	if IsEOF(lexer.source, lexer.cursor) {
+		return false
+	}
+
+	tokenizer := map[TokenType]func([]byte, uint) uint{
+		WHITESPACE: IsWhitespace,
+		COMMENT:    IsComment,
+		IDENTIFIER: IsIdentifier,
+		/*
+			STRINGLITERAL:   IsStringLiteral,
+			NUMERICLITERAL:  IsNumericLiteral,
+			OPERATOR:        IsOperator,
+		*/
+		CURLYBRACEBEGIN: IsCurlyBracedBegin,
+		CURLYBRACEEND:   IsCurlyBracedEnd,
+		/*
+			ROUNDBRACEBEGIN: IsRoundBracedBegin,
+			ROUNDBRACEEND:   IsRoundBracedEnd,
+		*/
+	}
+	for tok, fn := range tokenizer {
+		if nextToken = lexer.Take(tok, fn); nextToken != nil {
+			return true
+		}
+	}
+
+	lexer.Tokens = append(lexer.Tokens, Token{ERROR, lexer.source[lexer.cursor : lexer.cursor+1]})
 	lexer.cursor++
+	return true
+}
+
+// Dump 는 현재 렉서에 저장된 토큰을 덤프합니다.
+func (lexer *Lexer) Dump() {
+	for _, tok := range lexer.Tokens {
+		fmt.Println(tok)
+	}
 }
