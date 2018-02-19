@@ -12,7 +12,6 @@ const (
 	NUMERICLITERAL
 	BOOLEANLITERAL
 
-	KEYWORD
 	IDENTIFIER
 
 	OPERATOR
@@ -31,45 +30,45 @@ type TokenType uint
 
 // Token 은 타입과 슬라이스로 정의됩니다.
 type Token struct {
-	tokenType TokenType
-	codePiece []byte
+	tokenType   TokenType
+	sourcePiece []byte
 }
 
 // Lexer 는 현재 렉서 머신 상태를 가지고 있습니다.
 type Lexer struct {
-	code   []byte
+	source []byte
 	cursor uint
 	tokens []Token
 }
 
 // NewLexer : 파일을 읽어들여, 이를 해석할 렉서를 만듭니다.
 func NewLexer(fileName string) *Lexer {
-	code, err := FileReadAll(fileName)
+	source, err := FileReadAll(fileName)
 	if err != nil {
 		return nil
 	}
 
-	lexer := Lexer{code, 0, make([]Token, 256)}
+	lexer := Lexer{source, 0, make([]Token, 256)}
 	return &lexer
 }
 
 // Take 는 코드에서 일치하는 부분을 잘라냅니다.
 func (lexer *Lexer) Take(tokenType TokenType, fn func([]byte, uint) uint) *Token {
-	cur := fn(lexer.code, lexer.cursor)
+	cur := fn(lexer.source, lexer.cursor)
 	if lexer.cursor == cur {
 		return nil
 	}
 
-	newToken := &Token{tokenType, lexer.code[lexer.cursor:cur]}
+	newToken := &Token{tokenType, lexer.source[lexer.cursor:cur]}
 	lexer.cursor = cur
 	return newToken
 }
 
 // IsWhitespace : 화이트스페이스인지 체크해서 화이트스페이스의 슬라이스를 구합니다.
-func IsWhitespace(code []byte, cursor uint) uint {
+func IsWhitespace(source []byte, cursor uint) uint {
 	cur := cursor
 	for true {
-		switch code[cur] {
+		switch source[cur] {
 		case ' ', '\t', '\r', '\n':
 			cur++
 		default:
@@ -81,12 +80,12 @@ func IsWhitespace(code []byte, cursor uint) uint {
 }
 
 // IsComment 는 커멘트인지를 판단합니다.
-func IsComment(code []byte, cursor uint) uint {
+func IsComment(source []byte, cursor uint) uint {
 	cur := cursor
-	if code[cur] == '/' && code[cur+1] == '/' {
+	if source[cur] == '/' && source[cur+1] == '/' {
 		cur++
 		for true {
-			if code[cur] == '\n' {
+			if source[cur] == '\n' {
 				cur++
 				break
 			}
@@ -96,10 +95,10 @@ func IsComment(code []byte, cursor uint) uint {
 		return cur
 	}
 
-	if code[cur] == '/' && code[cur+1] == '*' {
+	if source[cur] == '/' && source[cur+1] == '*' {
 		cur++
 		for true {
-			if code[cur] == '*' && code[cur+1] == '/' {
+			if source[cur] == '*' && source[cur+1] == '/' {
 				cur++
 				break
 			}
@@ -111,12 +110,12 @@ func IsComment(code []byte, cursor uint) uint {
 }
 
 // IsStringLiteral 은 문자열 리터럴인지 확인합니다.
-func IsStringLiteral(code []byte, cursor uint) uint {
+func IsStringLiteral(source []byte, cursor uint) uint {
 	cur := cursor
-	if code[cur] == '"' {
+	if source[cur] == '"' {
 		cur++
 		for true {
-			if code[cur] == '"' && code[cur-1] != '\\' {
+			if source[cur] == '"' && source[cur-1] != '\\' {
 				break
 			}
 			cur++
@@ -128,43 +127,50 @@ func IsStringLiteral(code []byte, cursor uint) uint {
 
 // IsNumericLiteral 은 숫자 리터럴인지 확인합니다.
 // 아직 exponential expression은 지원하지 않습니다.
-func IsNumericLiteral(code []byte, cursor uint) uint {
+func IsNumericLiteral(source []byte, cursor uint) uint {
 	cur := cursor
-	re, err := regexp.Compile(`[-+]?\d*\.?\d+([eE][-+]?\d+)?`)
-	if err != nil {
-		return cur
-	}
+	if re, err := regexp.Compile(`[-+]?\d*\.?\d+([eE][-+]?\d+)?`); err == nil {
+		matched := re.FindIndex(source[cur:])
 
-	matched := re.FindIndex(code[cur:])
-
-	if matched[0] == 0 {
-		cur += uint(matched[1])
+		if matched[0] == 0 {
+			cur += uint(matched[1])
+		}
 	}
 
 	return cur
 }
 
-func IsKeyword(code []byte, cursor uint) uint {
+// IsIdentifier 는 식별자인지 확인합니다.
+func IsIdentifier(source []byte, cursor uint) uint {
+	cur := cursor
+	if re, err := regexp.Compile(`[a-zA-Z_][0-9a-zA-Z_]*`); err == nil {
+		matched := re.FindIndex(source[cur:])
 
+		if matched[0] == 0 {
+			cur += uint(matched[1])
+		}
+	}
+
+	return cur
 }
 
 // NextToken : 토큰을 하나 떼어냅니다.
 func (lexer *Lexer) NextToken() {
 	var nextToken *Token
 
-	if nextToken = lexer.Take(WHITESPACE, IsWhitespace); nextToken != nil {
-		return
+	tokenizer := map[TokenType]func([]byte, uint) uint{
+		WHITESPACE:     IsWhitespace,
+		COMMENT:        IsComment,
+		IDENTIFIER:     IsIdentifier,
+		STRINGLITERAL:  IsStringLiteral,
+		NUMERICLITERAL: IsNumericLiteral,
 	}
-	if nextToken = lexer.Take(COMMENT, IsComment); nextToken != nil {
-		return
-	}
-	if nextToken = lexer.Take(STRINGLITERAL, IsStringLiteral); nextToken != nil {
-		return
-	}
-	if nextToken = lexer.Take(NUMERICLITERAL, IsNumericLiteral); nextToken != nil {
-		return
+	for tok, fn := range tokenizer {
+		if nextToken = lexer.Take(tok, fn); nextToken != nil {
+			return
+		}
 	}
 
-	lexer.tokens = append(lexer.tokens, Token{ERROR, lexer.code[lexer.cursor : lexer.cursor+1]})
+	lexer.tokens = append(lexer.tokens, Token{ERROR, lexer.source[lexer.cursor : lexer.cursor+1]})
 	lexer.cursor++
 }

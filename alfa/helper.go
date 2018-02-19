@@ -4,6 +4,7 @@ import (
 	"os"
 )
 
+// FileReadAll 은 파일이름을  받아, 해당 파일을 읽어들여 바이트열로 리턴합니다.
 func FileReadAll(fileName string) ([]byte, error) {
 	f, err := os.Open(fileName)
 	if err != nil {
