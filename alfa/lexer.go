@@ -17,7 +17,7 @@ const (
 	BOOLEANLITERAL
 
 	IDENTIFIER
-
+	REFERENCE
 	OPERATOR
 
 	CURLYBRACEBEGIN
@@ -123,7 +123,7 @@ func IsStringLiteral(source []byte, cursor uint) uint {
 	if source[cur] == '"' {
 		cur++
 		for true {
-			if source[cur] == '"' && source[cur-1] != '\\' {
+			if cur <= uint(len(source)) && source[cur] == '"' && source[cur-1] != '\\' {
 				break
 			}
 			cur++
@@ -140,7 +140,7 @@ func IsNumericLiteral(source []byte, cursor uint) uint {
 	if re, err := regexp.Compile(`[-+]?\d*\.?\d+([eE][-+]?\d+)?`); err == nil {
 		matched := re.FindIndex(source[cur:])
 
-		if matched[0] == 0 {
+		if matched != nil && matched[0] == 0 {
 			cur += uint(matched[1])
 		}
 	}
@@ -149,16 +149,30 @@ func IsNumericLiteral(source []byte, cursor uint) uint {
 }
 
 // IsIdentifier 는 식별자인지 확인합니다.
+// 이 이름이 적절한지, 그리고 Reference 와 분리해서 관리하는 게 맞는지는 고민이 필요합니다.
 func IsIdentifier(source []byte, cursor uint) uint {
 	cur := cursor
-	if re, err := regexp.Compile(`[a-zA-Z_][0-9a-zA-Z_]*`); err == nil {
-		matched := re.FindIndex(source[cur:])
+	re := regexp.MustCompile(`[a-zA-Z_][0-9a-zA-Z_]*`)
 
-		if matched != nil {
-			if matched[0] == 0 {
-				cur += uint(matched[1])
-			}
-		}
+	matched := re.FindIndex(source[cur:])
+
+	if matched != nil && matched[0] == 0 {
+		cur += uint(matched[1])
+	}
+
+	return cur
+}
+
+// IsReference 는 네임스페이스의 중첩 표현을 갖는 식별자를 확인합니다.
+// 이 이름이 적절한지, 그리고 Identifier 와 분리해서 관리하는 게 맞는지는 고민이 필요합니다.
+func IsReference(source []byte, cursor uint) uint {
+	cur := cursor
+	re := regexp.MustCompile(`[a-zA-Z_][0-9a-zA-Z_]*(\.(\*|([a-zA-Z_][0-9a-zA-Z_]*)))+`)
+
+	matched := re.FindIndex(source[cur:])
+
+	if matched != nil && matched[0] == 0 {
+		cur += uint(matched[1])
 	}
 
 	return cur
@@ -167,11 +181,16 @@ func IsIdentifier(source []byte, cursor uint) uint {
 // IsOperator 는 연산자인지를 확인합니다.
 func IsOperator(source []byte, cursor uint) uint {
 	operators := [][]byte{
+		[]byte("or"),
+		[]byte("and"),
 		[]byte("|"),
 		[]byte("&"),
+		[]byte("<="),
 		[]byte("<"),
+		[]byte(">="),
 		[]byte(">"),
 		[]byte("$"),
+		[]byte("=="),
 		[]byte("="),
 		[]byte("@"),
 		[]byte("^"),
@@ -246,19 +265,16 @@ func (lexer *Lexer) NextToken() bool {
 	}
 
 	tokenizer := map[TokenType]func([]byte, uint) uint{
-		COMMENT:    IsComment,
-		IDENTIFIER: IsIdentifier,
-		/*
-			STRINGLITERAL:   IsStringLiteral,
-			NUMERICLITERAL:  IsNumericLiteral,
-			OPERATOR:        IsOperator,
-		*/
+		COMMENT:         IsComment,
+		REFERENCE:       IsReference,
+		IDENTIFIER:      IsIdentifier,
+		STRINGLITERAL:   IsStringLiteral,
+		NUMERICLITERAL:  IsNumericLiteral,
+		OPERATOR:        IsOperator,
 		CURLYBRACEBEGIN: IsCurlyBracedBegin,
 		CURLYBRACEEND:   IsCurlyBracedEnd,
-		/*
-			ROUNDBRACEBEGIN: IsRoundBracedBegin,
-			ROUNDBRACEEND:   IsRoundBracedEnd,
-		*/
+		ROUNDBRACEBEGIN: IsRoundBracedBegin,
+		ROUNDBRACEEND:   IsRoundBracedEnd,
 	}
 	for tok, fn := range tokenizer {
 		if nextToken = lexer.Take(tok, fn); nextToken != nil {
@@ -274,6 +290,6 @@ func (lexer *Lexer) NextToken() bool {
 // Dump 는 현재 렉서에 저장된 토큰을 덤프합니다.
 func (lexer *Lexer) Dump() {
 	for _, tok := range lexer.Tokens {
-		fmt.Println(tok)
+		fmt.Println(tok.tokenType, " : ", string(tok.sourcePiece))
 	}
 }

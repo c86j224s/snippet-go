@@ -63,6 +63,30 @@ func TestNamespace2(t *testing.T) {
 	}
 
 	if len(lexer.Tokens) != 20 {
+		lexer.Dump()
 		t.Errorf("unexpected lexer.Tokens : %d", len(lexer.Tokens))
 	}
 }
+
+/*
+// TestRule 은 3.7.1 예제를 테스트합니다.
+func TestRule(t *testing.T) {
+	exampleSource := []byte(`
+		rule {
+			permit
+			target clause Attributes.resourceType == "document"
+			condition Attributes.userClearance >= Attributes.resourceClassification
+		}
+	`)
+
+	lexer := alfa.NewLexerFromData(exampleSource)
+	for lexer.NextToken() {
+	}
+
+	if len(lexer.Tokens) != 12 {
+		t.Errorf("unexpected lexer.Tokens : %d", len(lexer.Tokens))
+	}
+
+}
+
+*/

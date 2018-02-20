@@ -1,3 +1,3 @@
+* pass TestNamespace2 test.
 * add KEYWORD token. (ex: 'namespace')
-* add REFERENCE token. (ex: 'A.B.P' or 'A.B.*')
-* pass TestNamespace2
+* pass TestRule test.
