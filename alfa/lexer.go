@@ -240,8 +240,12 @@ func (lexer *Lexer) NextToken() bool {
 		return false
 	}
 
+	if cur := IsWhitespace(lexer.source, lexer.cursor); lexer.cursor != cur {
+		lexer.cursor = cur
+		return true
+	}
+
 	tokenizer := map[TokenType]func([]byte, uint) uint{
-		WHITESPACE: IsWhitespace,
 		COMMENT:    IsComment,
 		IDENTIFIER: IsIdentifier,
 		/*

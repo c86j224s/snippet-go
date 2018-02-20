@@ -20,7 +20,7 @@ func TestComment(t *testing.T) {
 	for lexer.NextToken() {
 	}
 
-	if len(lexer.Tokens) != 5 {
+	if len(lexer.Tokens) != 2 {
 		t.Errorf("unexpected lexer.Tokens : %d", len(lexer.Tokens))
 	}
 }
@@ -38,7 +38,7 @@ func TestNamespace(t *testing.T) {
 	for lexer.NextToken() {
 	}
 
-	if len(lexer.Tokens) != 17 {
+	if len(lexer.Tokens) != 8 {
 		t.Errorf("unexpected lexer.Tokens : %d", len(lexer.Tokens))
 	}
 }
@@ -62,7 +62,7 @@ func TestNamespace2(t *testing.T) {
 	for lexer.NextToken() {
 	}
 
-	if len(lexer.Tokens) != 41 {
+	if len(lexer.Tokens) != 20 {
 		t.Errorf("unexpected lexer.Tokens : %d", len(lexer.Tokens))
 	}
 }
