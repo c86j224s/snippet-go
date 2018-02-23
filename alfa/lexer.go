@@ -264,20 +264,24 @@ func (lexer *Lexer) NextToken() bool {
 		return true
 	}
 
-	tokenizer := map[TokenType]func([]byte, uint) uint{
-		COMMENT:         IsComment,
-		REFERENCE:       IsReference,
-		IDENTIFIER:      IsIdentifier,
-		STRINGLITERAL:   IsStringLiteral,
-		NUMERICLITERAL:  IsNumericLiteral,
-		OPERATOR:        IsOperator,
-		CURLYBRACEBEGIN: IsCurlyBracedBegin,
-		CURLYBRACEEND:   IsCurlyBracedEnd,
-		ROUNDBRACEBEGIN: IsRoundBracedBegin,
-		ROUNDBRACEEND:   IsRoundBracedEnd,
+	type Tokenizer struct {
+		tok TokenType
+		fn  func([]byte, uint) uint
 	}
-	for tok, fn := range tokenizer {
-		if nextToken = lexer.Take(tok, fn); nextToken != nil {
+	tokenizer := []Tokenizer{
+		Tokenizer{COMMENT, IsComment},
+		Tokenizer{REFERENCE, IsReference},
+		Tokenizer{IDENTIFIER, IsIdentifier},
+		Tokenizer{STRINGLITERAL, IsStringLiteral},
+		Tokenizer{NUMERICLITERAL, IsNumericLiteral},
+		Tokenizer{OPERATOR, IsOperator},
+		Tokenizer{CURLYBRACEBEGIN, IsCurlyBracedBegin},
+		Tokenizer{CURLYBRACEEND, IsCurlyBracedEnd},
+		Tokenizer{ROUNDBRACEBEGIN, IsRoundBracedBegin},
+		Tokenizer{ROUNDBRACEEND, IsRoundBracedEnd},
+	}
+	for _, each := range tokenizer {
+		if nextToken = lexer.Take(each.tok, each.fn); nextToken != nil {
 			return true
 		}
 	}
