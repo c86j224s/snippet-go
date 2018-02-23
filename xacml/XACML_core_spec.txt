@@ -1,5 +1,159 @@
 http://docs.oasis-open.org/xacml/3.0/xacml-3.0-core-spec-os-en.html
 
+================================================================================
+1. Introduction
+
+
+================================================================================
+2. Background (non-normative)
+
+--------------------------------------------------------------------------------
+
+2.1. Requirements
+
+--------------------------------------------------------------------------------
+
+2.2. Rule and policy combining
+
+<PolicySet> := <PolicySet>* + <Policy>+
+<Policy> := <Rule>+
+
+--------------------------------------------------------------------------------
+
+2.3. Combining algorithms
+
+Policy 혹은 PolicySet 안의 여러 Rule 혹은 Policy들이 어떻게 결합되는가를 지정.
+Policy 혹은 PolicySet 엘리먼트의 RuleCombiningAlgId 혹은 PolicyCombiningAlgId 속성으로 지정.
+
+- Deny-overrides : Deny가 하나라도 있으면 Deny.
+- Permit-overrides : Permit이 하나라도 있으면 Permit.
+- First-applicable : target과 condition이 적용되는 첫 Rule의 결과가 곧 전체 결과.
+- Only-one-applicable : Policy를 결합할 때만 사용됨. target이 적용되는 policy가 오직 하나여야 함. 적용되는 것이  하나도 없을 때는 "NotApplicable", 둘 이상이 결우는 결과가 "Indeterminate"가 됨.
+
+--------------------------------------------------------------------------------
+
+2.4. Multiple subjects
+
+하나 이상의 subject attribute를 decision request에 넣을 수 있다.
+
+--------------------------------------------------------------------------------
+
+2.5. Policy based on subject and resource attributes
+
+authorization decision은 identity보다는 subject로 하게 됨. (예를 들어 대표적으로 role)
+<AttributeDesignator> 엘리먼트에 URN으로 정해서 attribute를 지정할 수 있다.
+<AttributeSelector> 는 대신 XPath 표현식으로 <Content> 위의 attribute들을 담을 수 있다.
+표준적인 subject attribute들은 LDAP 스펙문서들에서도 참고할 수 있다.
+subject 뿐만 아니라 resource attribute들도 이같은 방법으로 표현할 수 있다.
+
+--------------------------------------------------------------------------------
+
+2.6. Multi-valued attributes
+
+named attribute 안에 여러 값을 담을 수 있는데,
+중복된 값을 담을 수 있는 컬렉션을 bag 이라고 하고, 중복이 없는 컬렉션을 set 이라고 한다.
+
+--------------------------------------------------------------------------------
+
+2.7. Policy based on resource contents
+
+policy는 resource content들로도 구성될 수 있다. <AttributeSelector> 이용.
+
+--------------------------------------------------------------------------------
+
+2.8. Operators
+
+XACML은 내장 함수들과, 비표준 함수들을 추가하는 방법을 제공한다.
+<Apply> 엘리먼트에 FunctionId 속성에 함수를 지정할 수 있는데, 표준 함수들은 argument와 return 값이 명시되어 있다. 데이터 타입 일관성은 최소 policy 파싱 시점에 체크될 수 있다.
+rule statement의 boolean logic을 작성할 때도 함수를 쓸 수 있다.
+
+--------------------------------------------------------------------------------
+
+2.9. Policy distribution
+
+<Target> 엘리머트로 policy가 적용되어야 하는지 판별 가능.
+예를 들어, resource를 (identifier, locator, ..) 를 policy 적용 여부 판단에 쓰면 resource마다  다른 곳에서 policy를 판단하게 할 수 있다.
+2.10. 과 연관..
+
+--------------------------------------------------------------------------------
+
+2.10. Policy indexing
+
+많은 독립적인 policy들이 있을 때 요청된 action에 맞는 적용 가능한 policy만 찾아서 evaluate 하고 싶을 수 있다. 이럴 때 <Target/> 엘리먼트를 이용한다.
+두가지 방법이 가능한데,
+1. DB에 저장된 policy 중 target이 적용되는 policy만 끌어다가 처리하는 방법.
+2. DB에 저장된 policy들을 모두 끌어다가 target이 적용되는 것들만 처리하는 방법.
+
+--------------------------------------------------------------------------------
+
+2.11. Abstraction layer
+
+XACML은 구현과 분리되어 있다. PEP가 어디에 위치하건, 요청과 응답 포맷이 XML이 아니어서 conversion을 구현하건..
+
+--------------------------------------------------------------------------------
+
+2.12. Actions performed in conjunction with enforcement
+
+obligations는 따로 표준이 정의된 것이 없다.
+PEP는 이해하지 못하는 obligation이 리턴되면 반드시 Deny를 해야 한다.
+
+--------------------------------------------------------------------------------
+
+2.13. Supplemental information about a decision
+
+decision과 관련된 부가정보들을 <Advice>에 포함하여 PEP에 전달할 수 있는데,
+PEP는 이 정보를 무시하여도 안전하다. (즉, 그렇게 정책을 작성해야 한다.)
+
+
+================================================================================
+3. Models (non-normative)
+
+--------------------------------------------------------------------------------
+
+3.1. Data-flow model
+
+그냥 Figure1 을 보는게 낫다.
+
+--------------------------------------------------------------------------------
+
+3.2. XACML context
+
+그냥 Figure2 를 보는게 낫다.
+여기서 xacml Policy.xml 은 PDP 입장에서는 꼭 XACML 표현이 아니어도 된다. (즉, 정책은 XACML 표준이 아니어도 된다는 )
+domain specific inputs -> xacml Context/Request.xml 변환은 구현 영역의 문제다. SAML을 받아서 XSLT를 이용해 변환하건... JSON을 받건.. 대신 XACML context 내에서는 XML 형식으로 정의된다.
+context 안의 attribute들은 subject, resource, action, environment 등의 카테고리르 분류된다. 다른 카테고리를 추가하는 것이 가능하다.
+
+--------------------------------------------------------------------------------
+
+3.3. Policy language model
+
+<PolicySet> := <PolicySet>* , <Policy>+ , <Target>1 , <PolicyCombiningAlgorithm>1 , <ObligationExpression>* , <AdviceExpression>*
+<Target> := <AnyOf>*
+<AnyOf> := <AllOf>*
+<Policy> := <Target>1 , <Rule>* , <RuleCombiningAlgorithm>1 , <ObligationExpression>* , <AdviceExpression>*
+<Rule> := <TargeT>1 , <Condition>1 , <Effect>1 , <ObligationExprssion>* , <AdviceExpression>*
+
+--------------------------------------------------------------------------------
+
+3.3.1. Rule
+
+a target
+a effect
+a condition
+obligation expressions
+advice expressions
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ================================================================================
