@@ -68,13 +68,12 @@ func TestNamespace2(t *testing.T) {
 	}
 }
 
-/*
 // TestRule 은 3.7.1 예제를 테스트합니다.
 func TestRule(t *testing.T) {
 	exampleSource := []byte(`
 		rule {
 			permit
-			target clause Attributes.resourceType == "document"
+			target clause Attributes.resourceType == "document" 
 			condition Attributes.userClearance >= Attributes.resourceClassification
 		}
 	`)
@@ -83,10 +82,80 @@ func TestRule(t *testing.T) {
 	for lexer.NextToken() {
 	}
 
-	if len(lexer.Tokens) != 12 {
+	if len(lexer.Tokens) != 13 {
 		t.Errorf("unexpected lexer.Tokens : %d", len(lexer.Tokens))
 	}
 
 }
 
-*/
+// TestPolicy 는 4.8.1 예제를 테스트합니다.
+func TestPolicy(t *testing.T) {
+	exampleSource := []byte(`
+		policy policyA = "http://example.com/policies/policyA" {
+			target clause Attributes.resourceType == "document"
+			condition Attributes.userClearance >= Attributes.resourceClassification
+			apply denyOverrides
+			rule {
+			   permit
+			   // ...
+			} 
+			rule {
+			   // ...
+			} 
+		 }
+	`)
+
+	lexer := alfa.NewLexerFromData(exampleSource)
+	for lexer.NextToken() {
+	}
+
+	if len(lexer.Tokens) != 26 {
+		lexer.Dump()
+		t.Errorf("unexpected lexer.Tokens : %d", len(lexer.Tokens))
+	}
+}
+
+// TestPolicySet 은 4.9.1 예제를 테스트합니다.
+func TestPolicySet(t *testing.T) {
+	exampleSource := []byte(`
+		policyset topLevel {
+			apply permitOverrides
+			medicalPolicy
+			policy printerPolicy {
+			   target clause Attributes.resourceType == "printer"
+			   apply permitOverrides
+			   rule {
+				  // ...
+			   }
+			} 
+		 }
+	`)
+
+	lexer := alfa.NewLexerFromData(exampleSource)
+	for lexer.NextToken() {
+	}
+
+	if len(lexer.Tokens) != 22 {
+		lexer.Dump()
+		t.Errorf("unexpected lexer.Tokens : %d", len(lexer.Tokens))
+	}
+}
+
+// TestTarget 은 4.10.1 예제를 테스트합니다.
+func TestTarget(t *testing.T) {
+	exampleSource := []byte(`
+		target clause Attributes.resourceType == "document"
+		and Attributes.documentStatus == "approved"
+		and stringRegexpMatch("aaa.*", Attributes.subjectId)
+		clause "read" == Attributes.actionId or Attributes.actionId == "write"
+	`)
+
+	lexer := alfa.NewLexerFromData(exampleSource)
+	for lexer.NextToken() {
+	}
+
+	if len(lexer.Tokens) != 24 {
+		lexer.Dump()
+		t.Errorf("unexpected lexer.Tokens : %d", len(lexer.Tokens))
+	}
+}

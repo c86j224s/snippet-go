@@ -122,8 +122,9 @@ func IsStringLiteral(source []byte, cursor uint) uint {
 	cur := cursor
 	if source[cur] == '"' {
 		cur++
-		for true {
-			if cur <= uint(len(source)) && source[cur] == '"' && source[cur-1] != '\\' {
+		for cur < uint(len(source)) {
+			if source[cur] == '"' && source[cur-1] != '\\' {
+				cur++
 				break
 			}
 			cur++
@@ -202,7 +203,7 @@ func IsOperator(source []byte, cursor uint) uint {
 	}
 
 	for _, op := range operators {
-		if bytes.HasPrefix(source, op) {
+		if bytes.HasPrefix(source[cursor:], op) {
 			return cursor + uint(len(op))
 		}
 	}
