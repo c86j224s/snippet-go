@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"time"
@@ -54,10 +55,24 @@ func ping(conn net.Conn) {
 	}
 }
 
+func betterping(conn net.Conn) {
+	ticker := time.NewTicker(3000 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			conn.Write([]byte("ping"))
+		}
+	}
+
+	// more better example : https://jacking75.github.io/go_time_scheduler/
+}
+
 func main() {
 	fmt.Println("hello go!")
 
-	connectRedis()
+	//connectRedis()
 
 	listener, err := net.Listen("tcp", ":3000")
 	if err != nil {
@@ -75,6 +90,7 @@ func main() {
 		defer conn.Close()
 
 		go handler(conn)
-		go ping(conn)
+		//go ping(conn)
+		go betterping(conn)
 	}
 }
